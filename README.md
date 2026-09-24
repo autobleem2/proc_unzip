@@ -59,8 +59,12 @@ inside what you were given, say something at least every `Timeout=` seconds. The
 
 ## Building
 
-- Windows: `./make_win.sh` in an MSYS2 UCRT64 shell - builds, runs the self-test, and lays out `dist/unzip/`.
-- Anything else: `cmake -S . -B build && cmake --build build && (cd build && ctest)`. For the console,
-  configure with the launcher's `toolchains/psc/PSCtoolchainV8.cmake` and `-DAB_TARGET=psc`.
+- Every target at once, as CI does it: `ci/build.sh all` in the `ghcr.io/autobleem2/autobleem-build:develop`
+  image - `dist/unzip-<version>.zip` with the binaries for the console, both Pis, the PC stick and Windows.
+- Windows by hand: `./make_win.sh` in an MSYS2 UCRT64 shell - builds, runs the self-test, and lays out
+  `dist/unzip/`.
+- Anything else: `cmake -S . -B build && cmake --build build && (cd build && ctest)`.
+
+Every push to `develop` builds the rolling `nightly` release; a `v*` tag makes a release.
 
 GPL-3.0-or-later (`LICENSE`); miniz is MIT (`third_party/miniz/LICENSE`).

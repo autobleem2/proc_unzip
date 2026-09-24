@@ -35,7 +35,8 @@ endif()
 
 # the self-test: real zips, the real program, what the protocol and the rules promise
 option(PROC_BUILD_TESTS "build and register the self-test" ON)
-if (PROC_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
+# a cross build runs it only where the build machine can run the result: the i386 PC stick
+if (PROC_BUILD_TESTS AND (NOT CMAKE_CROSSCOMPILING OR AB_TARGET STREQUAL "pcusb"))
     enable_testing()
     add_executable(unzip_selftest tests/selftest.cpp)
     target_link_libraries(unzip_selftest miniz)

@@ -1,0 +1,90 @@
+# proc_unzip CI: the self-test on the host, then the processor for every target in the shared image
+# (ci/build.sh), packed as one folder with a binary per platform key - unzip-<version>.zip, laid out as
+# System/Processors/unzip/. A v* tag publishes it as a release; develop keeps the rolling `nightly`
+# pre-release current. Gated by AB_CI_ENABLED, like every autobleem2 repository.
+name: build
+on:
+  push:
+    branches: [develop, master]
+    tags: ['v*']
+  pull_request:
+    branches: [develop, master]
+  workflow_dispatch:
+# a container job's steps run under sh unless told otherwise, and sh has no [[ ]]
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    if: vars.AB_CI_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/autobleem2/autobleem-build:${{ startsWith(github.ref, 'refs/tags/v') && 'latest' || 'develop' }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    env:
+      SCCACHE_DIR: /sccache
+      SCCACHE_CACHE_SIZE: 1G
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Restore sccache cache
+        uses: actions/cache@v6
+        with:
+          path: /sccache
+          key: sccache-proc-unzip-${{ github.sha }}
+          restore-keys: sccache-proc-unzip-
+      - name: Version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then echo "AB_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else echo "AB_VERSION=$(sed -n 's/^Version=//p' package/processor.ini | tr -d '\r')-$(date -u +%Y%m%d)-$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"; fi
+      - name: Self-test (host)
+        run: ci/build.sh native
+      - name: The console (psc)
+        run: ci/build.sh psc
+      - name: Raspberry Pi (linux-armhf, linux-arm64)
+        run: ci/build.sh rpi rpi64
+      - name: The PC stick (linux-i386, self-test again)
+        run: ci/build.sh pcusb
+      - name: Windows (windows-x86_64)
+        run: ci/build.sh win
+      - name: Package
+        run: ci/build.sh package
+      - uses: actions/upload-artifact@v7
+        with:
+          name: unzip-package
+          path: dist/*.zip
+          retention-days: 30
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions: { contents: write }
+    steps:
+      - uses: actions/download-artifact@v8
+        with: { name: unzip-package, path: out }
+      - name: Attach to the release
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          prerelease=""; case "${GITHUB_REF_NAME}" in *-*) prerelease="--prerelease";; esac
+          gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" \
+            --title "Unzip ${GITHUB_REF_NAME}" --generate-notes $prerelease out/*.zip || \
+          gh release upload "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" out/*.zip --clobber
+
+  nightly:
+    if: github.ref == 'refs/heads/develop' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions: { contents: write }
+    steps:
+      - uses: actions/download-artifact@v8
+        with: { name: unzip-package, path: out }
+      - uses: autobleem2/autobleem-build/.github/actions/nightly-release@develop
+        with:
+          files: out/*.zip
