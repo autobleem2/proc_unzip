@@ -226,6 +226,7 @@ struct Archive {
         mz_uint index;
         string name; // as stored, '/' separated
         uint64_t size;
+        mz_uint32 crc; // of the unpacked bytes, from the zip's directory
     };
 
     mz_zip_archive zip;
@@ -249,7 +250,7 @@ struct Archive {
             mz_zip_archive_file_stat st;
             if (!mz_zip_reader_file_stat(&zip, i, &st) || st.m_is_directory)
                 continue;
-            items.push_back({i, st.m_filename, st.m_uncomp_size});
+            items.push_back({i, st.m_filename, st.m_uncomp_size, st.m_crc32});
             totalSize += st.m_uncomp_size;
         }
         return true;
@@ -311,13 +312,32 @@ string commonTopFolder(const Archive &archive) {
     return top;
 }
 
+// a file already where an entry goes, with the entry's size and CRC: this program put it there on a run
+// that was stopped before the zip was finished (the rest is what a restart does), so it is kept, not a clash
+bool sameAsEntry(const string &path, const Archive::Item &item) {
+    FILE *f = openFile(path, "rb");
+    if (!f)
+        return false;
+    mz_ulong crc = MZ_CRC32_INIT;
+    uint64_t size = 0;
+    unsigned char buf[65536];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+        crc = mz_crc32(crc, buf, n);
+        size += n;
+    }
+    fclose(f);
+    return size == item.size && static_cast<mz_uint32>(crc) == item.crc;
+}
+
 //******************
 // unpacking one zip
 //******************
 // Unpacks every file of the zip into `dest` (the common top folder dropped, `flatten`: every file's own
-// name only), each through <name>.part, then deletes the zip. On any failure the files this call made are
-// removed again, the zip is kept, `why` says what went wrong and false is returned. `onPercent` follows the
-// bytes written.
+// name only), each through <name>.part. A file already there that is the entry (a stopped run's work) is
+// kept; one that is something else is a clash. On any failure the files this call made are removed again,
+// the zip is kept, `why` says what went wrong and false is returned. `onPercent` follows the bytes written.
+// The caller deletes the zip.
 template <typename Progress>
 bool unpack(Archive &archive, const string &dest, bool flatten, string &why,
             Progress onPercent) {
@@ -335,9 +355,13 @@ bool unpack(Archive &archive, const string &dest, bool flatten, string &why,
         }
         string rel = flatten ? fileName(item.name) : item.name.substr(top.size());
         string target = dest + "/" + rel;
+        removeFile(target + ".part"); // a run that was stopped left it: ours, whatever happens next
         if (exists(target)) {
-            why = rel + " is already there";
-            return false;
+            if (isDir(target) || !sameAsEntry(target, item)) {
+                why = rel + " is already there";
+                return false;
+            }
+            continue; // unpacked by a run that was stopped
         }
         plan.push_back({&item, target});
     }
@@ -361,7 +385,6 @@ bool unpack(Archive &archive, const string &dest, bool flatten, string &why,
     for (const Planned &p : plan) {
         makeDirs(dirName(p.target));
         string part = p.target + ".part";
-        removeFile(part); // a run that was killed left it
         FILE *out = openFile(part, "wb");
         if (!out) {
             why = "could not write " + part;

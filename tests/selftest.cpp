@@ -161,6 +161,22 @@ int main() {
     Run g3 = run("--start --games " + games);
     check(g3.code == 0 && g3.lines.size() == 2 && g3.lines[1] == "#DONE", "nothing to do: #Starting and #DONE only");
 
+    // a run stopped in the middle left the first file in place and the second as .part: a restart
+    // keeps the first, rewrites the second, and deletes the zip
+    makeZip(games + "/Resumed.zip", {{"Resumed.cue", "cue"}, {"Resumed.bin", "0123456789"}});
+    MKDIR((games + "/Resumed").c_str());
+    writeFile(games + "/Resumed/Resumed.cue", "cue");
+    writeFile(games + "/Resumed/Resumed.bin.part", "01234");
+    Run resumed = run("--start --games " + games);
+    check(resumed.code == 0 && resumed.has("#DONE"), "a stopped run's zip finishes on the restart");
+    {
+        ifstream bin(games + "/Resumed/Resumed.bin");
+        string text((istreambuf_iterator<char>(bin)), istreambuf_iterator<char>());
+        check(text == "0123456789", "the half-written file is written again, whole");
+    }
+    check(!exists(games + "/Resumed/Resumed.bin.part") && !exists(games + "/Resumed.zip"),
+          "no .part left, the zip deleted");
+
     // ROMs
     const string sonic = roms + "/Sega - Mega Drive - Genesis/Sonic.zip";
     makeZip(sonic, {{"Sonic (World).md", "rom"}});

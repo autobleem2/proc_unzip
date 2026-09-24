@@ -57,6 +57,16 @@ The rules: atomic (`.part`, then rename), idempotent (a second run on its own ou
 inside what you were given, say something at least every `Timeout=` seconds. The launcher's
 `docs/scanner-processors-plan.md` is the whole design.
 
+**Check yours before you publish it** with the launcher's `tools/proc_check.py`:
+
+```
+python tools/proc_check.py path/to/yourproc --games sample/Games --roms sample/roms
+```
+
+It runs your processor on scratch copies of the samples and reports every rule it can see broken: the
+protocol, `*.part` files left behind, writes outside the target, a second run that still has work to do,
+and a run stopped in the middle that cannot finish when started again.
+
 ## Building
 
 - Every target at once, as CI does it: `ci/build.sh all` in the `ghcr.io/autobleem2/autobleem-build:develop`
