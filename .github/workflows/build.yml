@@ -45,6 +45,8 @@ jobs:
           else echo "AB_VERSION=$(sed -n 's/^Version=//p' package/processor.ini | tr -d '\r')-$(date -u +%Y%m%d)-$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"; fi
       - name: Self-test (host)
         run: ci/build.sh native
+      - name: proc_check.py (the launcher's processor checker, on the native build)
+        run: ci/proc_check.sh
       - name: The console (psc)
         run: ci/build.sh psc
       - name: Raspberry Pi (linux-armhf, linux-arm64)

@@ -75,6 +75,7 @@ and a run stopped in the middle that cannot finish when started again.
   `dist/unzip/`.
 - Anything else: `cmake -S . -B build && cmake --build build && (cd build && ctest)`.
 
-Every push to `develop` builds the rolling `nightly` release; a `v*` tag makes a release.
+Every push to `develop` builds the rolling `nightly` release; a `v*` tag makes a release. CI also runs the
+launcher's `tools/proc_check.py` over the native build (`ci/proc_check.sh`) - copy that step into yours.
 
 GPL-3.0-or-later (`LICENSE`); miniz is MIT (`third_party/miniz/LICENSE`).
