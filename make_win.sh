@@ -10,5 +10,8 @@ cmake --build build_win
 rm -rf dist/unzip
 mkdir -p dist/unzip/bin/windows-x86_64
 cp package/processor.ini README.md LICENSE dist/unzip/
+cp third_party/miniz/LICENSE dist/unzip/LICENSE.miniz
+cp third_party/libarchive/COPYING dist/unzip/LICENSE.libarchive
+cp third_party/xz/COPYING.0BSD dist/unzip/LICENSE.liblzma
 cp build_win/unzip.exe dist/unzip/bin/windows-x86_64/
 echo "dist/unzip is ready: copy it to <stick>/System/Processors/unzip"

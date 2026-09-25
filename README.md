@@ -1,11 +1,13 @@
 # proc_unzip
 
-An AutoBleem **scanner processor**: before every scan it unpacks zipped PS1 games in `Games/`, and it unpacks
-zipped ROMs in `RetroArch/roms/` one at a time (arcade sets stay zipped - their cores read them that way).
+An AutoBleem **scanner processor**: before every scan it unpacks PS1 games packed as `.zip`, `.7z` or `.rar`
+in `Games/`, and it unpacks packed ROMs in `RetroArch/roms/` one at a time (arcade sets stay packed - their
+cores read them that way).
 
 It is also **the example to copy** when you write a processor of your own. It is one C++ file,
-[`src/main.cpp`](src/main.cpp), with nothing but the standard library and [miniz](third_party/miniz): read it
-top to bottom and you have the whole protocol.
+[`src/main.cpp`](src/main.cpp), with nothing but the standard library and the vendored decoders -
+[miniz](third_party/miniz) for zips, [libarchive](third_party/libarchive) with [liblzma](third_party/xz) for
+7z and RAR: read it top to bottom and you have the whole protocol.
 
 ## Installing
 
@@ -28,17 +30,30 @@ Only the `bin/` folders for your machines are needed. The next scan runs it. The
 
 | it is given | it does |
 |---|---|
-| `--start --games <Games>` | every `.zip` holding a disc image (`.cue`, `.bin`, `.img`, `.iso`, `.chd`, `.pbp`, `.ecm`, `.m3u`, `.ccd`): one loose in `Games/` becomes a folder named after it, one in a folder is unpacked there. A zip with one top folder loses it. A zip that is not a game is left alone. |
-| `--ismine --rom <file> --system <name>` | "mine" (exit 0) for a zip with exactly one file, unless the system is an arcade one |
-| `--start --rom <file> --system <name>` | the ROM next to where the zip was |
+| `--start --games <Games>` | every archive holding a disc image (`.cue`, `.bin`, `.img`, `.iso`, `.chd`, `.pbp`, `.ecm`, `.m3u`, `.ccd`): one loose in `Games/` becomes a folder named after it, one in a folder is unpacked there. An archive with one top folder loses it. An archive that is not a game is left alone. |
+| `--ismine --rom <file> --system <name>` | "mine" (exit 0) for an archive with exactly one file, unless the system is an arcade one |
+| `--start --rom <file> --system <name>` | the ROM next to where the archive was |
 
-Every file is written as `<name>.part` and renamed when it is complete; the zip is deleted only after the
-last rename. It never overwrites a file that is already there - that zip fails, with a warning, and is kept.
+The archives it reads:
+
+- `.zip` - stored or deflated.
+- `.7z` - LZMA, LZMA2, PPMd, BCJ/BCJ2 and the other branch filters, solid or not. It is read as a stream, so
+  a solid 7z of a whole disc is never held in memory. (Not Deflate or BZip2 inside a 7z - 7-Zip uses those
+  only when told to.)
+- `.rar` - RAR 1.5 to 4.x and RAR5, and a set of volumes: `Game.part1.rar`, `Game.part2.rar`, ... or the older
+  `Game.rar`, `Game.r00`, `Game.r01`, ... - read together, deleted together. A later volume on its own is not
+  touched.
+- Not: a split 7z (`Game.7z.001`), or anything with a password - those are left as they are.
+
+Every file is written as `<name>.part` and renamed when it is complete; the archive is deleted only after the
+last rename. It never overwrites a file that is already there - that archive fails, with a warning, and is
+kept. A file that *is* the entry (the work of a run that was stopped) is kept: for a zip the CRC says so, for a
+7z or a RAR the bytes are compared as they are unpacked.
 
 ## The protocol, in short
 
 ```
-proc --version                      #Unzip V1.0.0 - Unpacks zipped PS1 games and ROMs
+proc --version                      #Unzip V1.1.0 - Unpacks PS1 games and ROMs from .zip, .7z and .rar
 proc --ismine --ps1 <folder>        exit 0 = mine, 1 = not mine
 proc --ismine --rom <file> --system "<name>"
 proc --start --games <dir>          the whole Games tree
@@ -78,4 +93,6 @@ and a run stopped in the middle that cannot finish when started again.
 Every push to `develop` builds the rolling `nightly` release; a `v*` tag makes a release. CI also runs the
 launcher's `tools/proc_check.py` over the native build (`ci/proc_check.sh`) - copy that step into yours.
 
-GPL-3.0-or-later (`LICENSE`); miniz is MIT (`third_party/miniz/LICENSE`).
+GPL-3.0-or-later (`LICENSE`); miniz is MIT (`third_party/miniz/LICENSE`), libarchive BSD-2-Clause
+(`third_party/libarchive/COPYING`), liblzma 0BSD (`third_party/xz/COPYING.0BSD`). The package carries all three
+next to the program. RARLAB's own UnRAR source is deliberately not used: its licence is not GPL-compatible.

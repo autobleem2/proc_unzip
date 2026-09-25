@@ -2,8 +2,8 @@
 # The launcher's tools/proc_check.py over this processor, the way an author runs it before publishing: the
 # native build (build_linux/, from `ci/build.sh native`) laid out as a processor folder for this machine's key,
 # checked against generated sample trees - a zipped game with a top folder, a game already unpacked, a zip that
-# is no game, and a Mega Drive ROM. The checker comes from the launcher's develop branch (PROC_CHECK_URL, or a
-# local copy in PROC_CHECK).
+# is no game, a Mega Drive ROM, and a 7z and a RAR game and a 7z ROM from tests/data. The checker comes from
+# the launcher's develop branch (PROC_CHECK_URL, or a local copy in PROC_CHECK).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -40,5 +40,10 @@ os.makedirs(roms)
 with zipfile.ZipFile(os.path.join(roms, "Sonic.zip"), "w") as z:
     z.writestr("Sonic (World).md", "rom")
 EOF
+
+# the other two formats, from the self-test's archives: a 7z and a RAR game, and a 7z ROM
+cp tests/data/crash.7z tests/data/tekken.rar "$WORK/Games/"
+mkdir -p "$WORK/roms/Sega - Game Gear"
+cp tests/data/sonic.7z "$WORK/roms/Sega - Game Gear/"
 
 python3 "$WORK/proc_check.py" "$WORK/unzip" --games "$WORK/Games" --roms "$WORK/roms" --key "$key" -v

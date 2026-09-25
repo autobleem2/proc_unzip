@@ -97,6 +97,8 @@ package() {
     [ -d "$STAGE/bin" ] || { echo "nothing built into $STAGE" >&2; exit 1; }
     cp package/processor.ini README.md LICENSE "$STAGE/"
     cp third_party/miniz/LICENSE "$STAGE/LICENSE.miniz"
+    cp third_party/libarchive/COPYING "$STAGE/LICENSE.libarchive"
+    cp third_party/xz/COPYING.0BSD "$STAGE/LICENSE.liblzma"
     sed -i "s/^Version=.*/Version=$VERSION/" "$STAGE/processor.ini"
     local zip="dist/unzip-$VERSION.zip"
     rm -f "$zip"
