@@ -28,7 +28,7 @@ jobs:
   # see autobleem-build's route.yml for the order and every fallback (always hosted for a PR).
   route:
     if: vars.AB_CI_ENABLED == 'true'
-    uses: autobleem2/autobleem-build/.github/workflows/route.yml@feature/runner-route
+    uses: autobleem2/autobleem-build/.github/workflows/route.yml@develop
     with:
       force_fallback: ${{ inputs.force_fallback == true }}
     secrets: inherit
