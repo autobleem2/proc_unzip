@@ -10,6 +10,12 @@ on:
   pull_request:
     branches: [develop, master]
   workflow_dispatch:
+    inputs:
+      force_fallback:
+        type: boolean
+        required: false
+        default: false
+        description: test-only - force the build job onto ubuntu-24.04 (see autobleem-build's route.yml)
 # a container job's steps run under sh unless told otherwise, and sh has no [[ ]]
 defaults:
   run:
@@ -22,7 +28,9 @@ jobs:
   # see autobleem-build's route.yml for the order and every fallback (always hosted for a PR).
   route:
     if: vars.AB_CI_ENABLED == 'true'
-    uses: autobleem2/autobleem-build/.github/workflows/route.yml@develop
+    uses: autobleem2/autobleem-build/.github/workflows/route.yml@feature/runner-route
+    with:
+      force_fallback: ${{ inputs.force_fallback == true }}
     secrets: inherit
 
   # A job whose type is `uses: <reusable workflow>` cannot have its outputs read by a downstream
