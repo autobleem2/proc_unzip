@@ -28,7 +28,7 @@ jobs:
   build:
     needs: route
     if: vars.AB_CI_ENABLED == 'true'
-    runs-on: ${{ fromJSON(needs.route.outputs.runs-on) }}
+    runs-on: ${{ fromJSON(needs.route.outputs.runs_on) }}
     timeout-minutes: 90
     container:
       image: ghcr.io/autobleem2/autobleem-build:${{ startsWith(github.ref, 'refs/tags/v') && 'latest' || 'develop' }}
