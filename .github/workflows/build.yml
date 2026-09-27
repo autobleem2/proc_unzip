@@ -25,10 +25,23 @@ jobs:
     uses: autobleem2/autobleem-build/.github/workflows/route.yml@feature/runner-route
     secrets: inherit
 
-  build:
+  # A job whose type is `uses: <reusable workflow>` cannot have its outputs read by a downstream
+  # job's `runs-on:` directly (GitHub rejects needs.route.outputs.* there at parse time: "Unrecognized
+  # named-value: 'needs'") - this plain job re-exports route's output so build's runs-on can see it.
+  route_runner:
     needs: route
     if: vars.AB_CI_ENABLED == 'true'
-    runs-on: ${{ fromJSON(needs.route.outputs.runs_on) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    outputs:
+      runs_on: ${{ needs.route.outputs.runs_on }}
+    steps:
+      - run: echo "routed to ${{ needs.route.outputs.runner }}"
+
+  build:
+    needs: route_runner
+    if: vars.AB_CI_ENABLED == 'true'
+    runs-on: ${{ fromJSON(needs.route_runner.outputs.runs_on) }}
     timeout-minutes: 90
     container:
       image: ghcr.io/autobleem2/autobleem-build:${{ startsWith(github.ref, 'refs/tags/v') && 'latest' || 'develop' }}
