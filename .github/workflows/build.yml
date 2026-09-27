@@ -22,7 +22,7 @@ jobs:
   # see autobleem-build's route.yml for the order and every fallback (always hosted for a PR).
   route:
     if: vars.AB_CI_ENABLED == 'true'
-    uses: autobleem2/autobleem-build/.github/workflows/route.yml@feature/runner-route
+    uses: autobleem2/autobleem-build/.github/workflows/route.yml@develop
     secrets: inherit
 
   # A job whose type is `uses: <reusable workflow>` cannot have its outputs read by a downstream
